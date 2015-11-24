@@ -122,7 +122,7 @@ public class StashPublisher extends BaseCommitStatusPublisher {
                     @NotNull String comment) {
     String msg = createMessage(status, build.getBuildPromotion().getBuildTypeExternalId(), getBuildName(build), myLinks.getViewResultsUrl(build), comment);
     try {
-      vote(revision.getRevision(), msg);
+      vote(revision.getRevision(), msg, build);
     } catch (Exception e) {
       reportProblem(build.getBuildPromotion(), revision, e);
     }
@@ -134,7 +134,7 @@ public class StashPublisher extends BaseCommitStatusPublisher {
                     @NotNull String comment) {
     String msg = createMessage(status, build.getBuildPromotion().getBuildTypeExternalId(), getBuildName(build), myLinks.getQueuedBuildUrl(build), comment);
     try {
-      vote(revision.getRevision(), msg);
+      vote(revision.getRevision(), msg, build.getSequenceBuild());
     } catch (Exception e) {
       reportProblem(build.getBuildPromotion(), revision, e);
     }
@@ -193,9 +193,11 @@ public class StashPublisher extends BaseCommitStatusPublisher {
     return result.replaceAll("\\\\'", "'");
   }
 
-  private void vote(@NotNull String commit, @NotNull String data) throws URISyntaxException, IOException,
+  private void vote(@NotNull String commit, @NotNull String data, SBuild build) throws URISyntaxException, IOException,
           UnrecoverableKeyException, NoSuchAlgorithmException, KeyStoreException, KeyManagementException, StashException {
-    URI stashURI = new URI(getBaseUrl());
+
+    String baseUrl = build.getValueResolver().resolve(getBaseUrl()).getResult();
+    URI stashURI = new URI(baseUrl);
 
     DefaultHttpClient client = new DefaultHttpClient();
     HttpPost post = null;
@@ -210,7 +212,7 @@ public class StashPublisher extends BaseCommitStatusPublisher {
       BasicHttpContext ctx = new BasicHttpContext();
       ctx.setAttribute(ClientContext.AUTH_CACHE, authCache);
 
-      String url = getBaseUrl() + "/rest/build-status/1.0/commits/" + commit;
+      String url = baseUrl + "/rest/build-status/1.0/commits/" + commit;
       post = new HttpPost(url);
       post.setEntity(new StringEntity(data, ContentType.APPLICATION_JSON));
       response = client.execute(post, ctx);
